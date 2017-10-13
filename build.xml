@@ -1,0 +1,143 @@
+<project name="Force.com Migration Tool" default="retrieveUnpackaged" basedir="." 
+	xmlns:sf="antlib:com.salesforce">
+	<taskdef uri="antlib:com.salesforce" resource="com/salesforce/antlib.xml" classpath="lib/ant-salesforce.jar" />
+	<!-- Force.com Migration Tool Guide -->
+	<!-- http://www.salesforce.com/us/developer/docs/daas/index.htm -->
+	<!-- Load properties from file -->
+	<!-- AntContrib gives the ability to loop through-->
+	<taskdef resource="net/sf/antcontrib/antlib.xml">
+		<classpath>
+			<pathelement location="${basedir}/lib/ant-contrib-1.0b3.jar"/>
+		</classpath>
+	</taskdef>
+	<property file="build.properties"/>
+	<!-- Load properites from environment -->
+	<!-- These will override properties from the file -->
+	<!-- In Eclipse, use the "Run As > Ant Build... > Environment tab" -->
+	<!-- In Bamboo, use the "Environment Variables" for the ant task -->
+	<property environment="env"/>
+	<property name="sf.username" value="${env.SF_USERNAME}"/>
+	<property name="sf.password" value="${env.SF_PASSWORD}"/>
+	<property name="sf.token" value="${env.SF_TOKEN}"/>
+	<property name="sf.serverurl" value="${env.SF_SERVERURL}"/>
+	<property name="sf.tempdir" value="deleteme"/>
+	<!-- Retrieve an unpackaged set of metadata from your org -->
+	<!-- The attribute 'unpackaged' is where metadata will be stored -->
+	<target name="retrieveUnpackaged">
+		<delete dir="src" failonerror="true"/>
+		<mkdir dir="src"/>
+		<!-- Retrieve the contents into another directory -->
+		<sf:retrieve username="${sf.username}" password="${sf.password}${sf.token}" serverurl="${sf.serverurl}" retrieveTarget="src" unpackaged="${basedir}/package.xml" />
+	</target>
+	<!-- Retrieve the information on all supported metadata types -->
+	<!-- The attribute 'resultfilepath' is where output is stored -->
+	<target name="generateManifestPart1">
+		<!-- Create a temp directory to store temp data that will be deleted at the end of the process-->
+		<mkdir dir="deleteme"/>
+		<!-- Run the describe metadata to generate template package.xml minus Reports, EmailTemplates, Dashboards and 
+		Documents folder-->
+		<sf:describeMetadata username="${sf.username}" password="${sf.password}${sf.token}" serverurl="${sf.serverurl}" resultfilepath="${basedir}/${sf.tempdir}/describeMetadata.txt" />
+		<!-- Generate the package xml-->
+		<PackageXml username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" tempdir="${sf.tempdir}"/>
+	</target>
+	<!-- part2 of the xtraction -->
+	<target name="generateManifestPart2">
+		<fetchFolderContent username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" metadataType="Dashboard" tempdir="${sf.tempdir}"/>
+		<fetchFolderContent username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" metadataType="Report" tempdir="${sf.tempdir}"/>
+		<fetchFolderContent username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" metadataType="Document" tempdir="${sf.tempdir}"/>
+		<fetchFolderContent username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" metadataType="EmailTemplate" tempdir="${sf.tempdir}"/>
+	</target>
+	<!-- part3 of the xtraction -->
+	<target name="generateManifestPart3">
+		<sf:listMetadata username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}"  metadataType="InstalledPackage" resultFilePath="junk.log"/>
+	</target>
+	<!-- Deploy the information on all supported metadata types -->
+	<target name="deploy">
+		<delete dir="./deploy"/>
+		<mkdir dir="./deploy"/>
+		<zip destfile="./deploy/deploy.zip" basedir="src"/>
+		<sf:deploy username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" zipFile="./deploy/deploy.zip" testLevel="NoTestRun"/>
+	</target>
+	<!-- Macros defined to collect the folder names and folder contents for Report
+	Document, Dashboard and EmailTemplate -->
+	<macrodef name="PackageXml">
+		<attribute name="username"/>
+		<attribute name="password"/>
+		<attribute name="serverurl"/>
+		<attribute name="tempdir"/>
+		<sequential>
+			<fetchFolders username="@{username}" password="@{password}" serverurl="@{serverurl}" metadataType="DashboardFolder"  tempFile = "@{tempdir}/dashboard.log" />
+			<fetchFolders username="@{username}" password="@{password}" serverurl="@{serverurl}" metadataType="EmailFolder" tempFile = "@{tempdir}/email.log" />
+			<fetchFolders username="@{username}" password="@{password}" serverurl="@{serverurl}" metadataType="DocumentFolder" tempFile = "@{tempdir}/document.log" />
+			<fetchFolders username="@{username}" password="@{password}" serverurl="@{serverurl}" metadataType="ReportFolder" tempFile = "@{tempdir}/report.log" />
+		</sequential>
+	</macrodef>
+	<!-- macro to fetch folders and not the content -->
+	<macrodef name="fetchFolders">
+		<attribute name="username"/>
+		<attribute name="password"/>
+		<attribute name="serverurl"/>
+		<attribute name="metadataType"/>
+		<attribute name="tempFile"/>
+		<sequential>
+			<sf:listMetadata username="@{username}" password="@{password}" serverurl="@{serverurl}" metadataType="@{metadataType}" resultFilePath="@{tempFile}"/>
+		</sequential>
+	</macrodef>
+	<!-- macro to fetch the content once the folder is provided -->
+	<macrodef name="fetchFolderContent">
+		<attribute name="username"/>
+		<attribute name="password"/>
+		<attribute name="serverurl"/>
+		<attribute name="metadataType"/>
+		<attribute name="tempdir"/>
+		<sequential>
+			<if>
+				<equals arg1="@{metadataType}" arg2="Report"/>
+				<then>
+					<loadfile srcfile="@{tempdir}/unmanaged_reports.log" property="FileContent"/>
+					<for param="line" list="${FileContent}" delimiter="${line.separator}">
+						<sequential>
+							<sf:listMetadata username="@{username}" password="@{password}" serverurl="@{serverurl}" folder="@{line}" metadataType="@{metadataType}" resultFilePath="@{tempdir}/@{metadataType}_@{line}.log"/>
+						</sequential>
+					</for>
+				</then>
+				<elseif>
+					<equals arg1="@{metadataType}" arg2="Document"/>
+					<then>
+						<loadfile srcfile="@{tempdir}/unmanaged_documents.log" property="FileContent1"/>
+						<for param="line" list="${FileContent1}" delimiter="${line.separator}">
+							<sequential>
+								<sf:listMetadata username="@{username}" password="@{password}" serverurl="@{serverurl}" folder="@{line}" metadataType="@{metadataType}" resultFilePath="@{tempdir}/@{metadataType}_@{line}.log"/>
+							</sequential>
+						</for>
+					</then>
+				</elseif>
+				<elseif>
+					<equals arg1="@{metadataType}" arg2="Dashboard"/>
+					<then>
+						<loadfile srcfile="@{tempdir}/unmanaged_dashboards.log" property="FileContent2"/>
+						<for param="line" list="${FileContent2}" delimiter="${line.separator}">
+							<sequential>
+								<sf:listMetadata username="@{username}" password="@{password}" serverurl="@{serverurl}" folder="@{line}" metadataType="@{metadataType}" resultFilePath="@{tempdir}/@{metadataType}_@{line}.log"/>
+							</sequential>
+						</for>
+					</then>
+				</elseif>
+				<elseif>
+					<equals arg1="@{metadataType}" arg2="EmailTemplate"/>
+					<then>
+						<loadfile srcfile="@{tempdir}/unmanaged_emails.log" property="FileContent3"/>
+						<for param="line" list="${FileContent3}" delimiter="${line.separator}">
+							<sequential>
+								<sf:listMetadata username="@{username}" password="@{password}" serverurl="@{serverurl}" folder="@{line}" metadataType="@{metadataType}" resultFilePath="@{tempdir}/@{metadataType}_@{line}.log"/>
+							</sequential>
+						</for>
+					</then>
+				</elseif>
+				<else>
+					<echo message="No type set"/>
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+</project>
