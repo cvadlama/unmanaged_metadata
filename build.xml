@@ -40,17 +40,31 @@
 		<!-- Generate the package xml-->
 		<PackageXml username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" tempdir="${sf.tempdir}"/>
 	</target>
-	<!-- part2 of the xtraction -->
-	<target name="generateManifestPart2">
+	<!-- dashboard metadata xtraction -->
+	<target name="generateDashboardData">
 		<fetchFolderContent username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" metadataType="Dashboard" tempdir="${sf.tempdir}"/>
-		<fetchFolderContent username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" metadataType="Report" tempdir="${sf.tempdir}"/>
+	</target>
+
+		<!-- document metadata xtraction -->
+	<target name="generateDocumentData">
 		<fetchFolderContent username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" metadataType="Document" tempdir="${sf.tempdir}"/>
+	</target>
+
+		<!-- report metadata xtraction -->
+	<target name="generateReportData">
+		<fetchFolderContent username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" metadataType="Report" tempdir="${sf.tempdir}"/>
+	</target>
+
+		<!-- email template metadata xtraction -->
+	<target name="generateEmailTemplateData">
 		<fetchFolderContent username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" metadataType="EmailTemplate" tempdir="${sf.tempdir}"/>
 	</target>
-	<!-- part3 of the xtraction -->
-	<target name="generateManifestPart3">
+
+	<!-- test target to check how any particular metadata type behaves -->
+	<target name="testTarget">
 		<sf:listMetadata username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}"  metadataType="InstalledPackage" resultFilePath="junk.log"/>
 	</target>
+
 	<!-- Deploy the information on all supported metadata types -->
 	<target name="deploy">
 		<delete dir="./deploy"/>

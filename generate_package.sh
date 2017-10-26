@@ -38,9 +38,21 @@ rm deleteme/email.log
 
 # check for reports,dashboards,documents and email templates
 
-echo "Running step 2 generateManifestPart2 ......"
+echo "Running extraction for email templates ......"
 
-ant generateManifestPart2
+ant generateEmailTemplateData
+
+echo "Running extraction for dashboards ......"
+
+ant generateDashboardData
+
+echo "Running extraction for documents ......"
+
+ant generateDocumentData
+
+echo "Running extraction for reports ......"
+
+ant generateReportData
 
 #generate the members for dashboard
 if ls deleteme/Dashboard_* 1> /dev/null 2>&1; then
