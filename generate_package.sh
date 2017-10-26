@@ -86,7 +86,7 @@ fi
 
 line=$(grep -n '<name>CustomObject</name>' package.xml | cut -d ":" -f 1)
 
-{ head -n $(($line-1)) package.xml; for i in `cat inclusions`; do echo "<members>$i</members>"; done; tail -n +$line file2; } > deleteme/newpackage.xml
+{ head -n $(($line-1)) package.xml; for i in `cat inclusions`; do echo "<members>$i</members>"; done; tail -n +$line package.xml; } > deleteme/newpackage.xml
 
 cp deleteme/newpackage.xml package.xml
 
