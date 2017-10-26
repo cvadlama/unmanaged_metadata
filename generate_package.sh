@@ -1,8 +1,9 @@
+echo "Running step 1 generateManifestPart1 ......"
 ant generateManifestPart1
 
-grep ChildObjects deleteme/describeMetadata.txt | sed -e 's/\*//g' | grep "ChildObjects: .[a-zA-Z0-9]*" | cut -d":" -f2- | sed -e $'s/,/\\\n/g' | sed -e 's/ //g' > deleteme/tmp.chum
+grep ChildObjects deleteme/describeMetadata.txt | sed -e 's/\*//g' | grep "ChildObjects: .[a-zA-Z0-9]*" | cut -d":" -f2- | sed -e $'s/,/\\\n/g' | sed -e 's/ //g' | grep -v -f exclusions > deleteme/tmp.chum
 
-grep "InFolder: false" -B 4 deleteme/describeMetadata.txt | grep "XMLName" | cut -f2 -d":" | sed -e 's/ //g' >>  deleteme/tmp.chum
+grep "InFolder: false" -B 4 deleteme/describeMetadata.txt | grep "XMLName" | cut -f2 -d":" | sed -e 's/ //g' | grep -v -f exclusions >>  deleteme/tmp.chum
 
 sort -u deleteme/tmp.chum -o deleteme/tmp.chum
 
@@ -36,6 +37,8 @@ grep "Manageable State: unmanaged" -B 3 deleteme/email.log | grep "FileName:" | 
 rm deleteme/email.log
 
 # check for reports,dashboards,documents and email templates
+
+echo "Running step 2 generateManifestPart2 ......"
 
 ant generateManifestPart2
 
@@ -78,6 +81,17 @@ if ls deleteme/EmailTemplate_* 1> /dev/null 2>&1; then
     echo "<name>EmailTemplate</name></types>" >> package.xml
 
 fi
+
+# addming standard object inclusions
+
+line=$(grep -n '<name>CustomObject</name>' package.xml | cut -d ":" -f 1)
+
+{ head -n $(($line-1)) package.xml; for i in `cat inclusions`; do echo "<members>$i</members>"; done; tail -n +$line file2; } > deleteme/newpackage.xml
+
+cp deleteme/newpackage.xml package.xml
+
+
+# Need to automate get the platform version. But for another day.
 
 echo "<version>40.0</version>" >>package.xml
 
