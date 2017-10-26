@@ -82,6 +82,16 @@ if ls deleteme/EmailTemplate_* 1> /dev/null 2>&1; then
 
 fi
 
+# Need to automate get the platform version. But for another day.
+
+echo "<version>40.0</version>" >>package.xml
+
+echo "</Package>" >>package.xml
+
+# formatting the xml is an important step in the process so we can get the exact line number for the match.
+
+xmllint --format package.xml --output package.xml
+
 # addming standard object inclusions
 
 line=$(grep -n '<name>CustomObject</name>' package.xml | cut -d ":" -f 1)
@@ -90,12 +100,8 @@ line=$(grep -n '<name>CustomObject</name>' package.xml | cut -d ":" -f 1)
 
 cp deleteme/newpackage.xml package.xml
 
-
-# Need to automate get the platform version. But for another day.
-
-echo "<version>40.0</version>" >>package.xml
-
-echo "</Package>" >>package.xml
+# the following formatting is more cosmentic if you want to see what
+# it looks like in an editor.
 
 xmllint --format package.xml --output package.xml
 
